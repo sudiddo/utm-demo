@@ -30,14 +30,14 @@ export default function RootLayout({
       >
         <Script
           strategy="afterInteractive"
-          src={`https://www.googletagmanager.com/gtag/js?id=${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}`}
+          src={`https://www.googletagmanager.com/gtag/js?id=G-R64CF5TY9M`}
         />
         <Script id="google-analytics" strategy="afterInteractive">
           {`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
-          gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}', {
+          gtag('config', 'G-R64CF5TY9M', {
             debug_mode: true,
             send_page_view: false
           });
