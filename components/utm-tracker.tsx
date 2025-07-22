@@ -27,6 +27,13 @@ import {
   Sparkles,
   TestTube2,
 } from "lucide-react";
+import {
+  waitForGA,
+  sendPageView,
+  sendConversion,
+  configureWithCampaign,
+  isGAAvailable,
+} from "@/lib/analytics";
 
 interface UtmParams {
   [key: string]: string;
@@ -84,9 +91,8 @@ const parseTrackingParams = (url: string): UtmParams => {
         params[key] = searchParams.get(key) || "";
       }
     });
-  } catch (error: unknown) {
+  } catch {
     // Silently fail for invalid URLs during typing
-    console.log("error", error);
   }
   return params;
 };
@@ -95,119 +101,58 @@ export default function UtmTracker() {
   const [currentUrl, setCurrentUrl] = useState<string>("");
   const [analyzedParams, setAnalyzedParams] = useState<UtmParams>({});
   const [urlInput, setUrlInput] = useState<string>("");
-  const [isGtagAvailable, setIsGtagAvailable] = useState<boolean>(false);
+  const [isGtagReady, setIsGtagReady] = useState<boolean>(false);
   const [lastEventSent, setLastEventSent] = useState<string | null>(null);
 
-  // On mount, get the initial URL and check for Google Analytics
+  // Initialize component and wait for Google Analytics
   useEffect(() => {
-    const initialUrl =
-      typeof window !== "undefined"
-        ? window.location.href
-        : "https://yourshop.com/";
-    setUrlInput(initialUrl);
-    setCurrentUrl(initialUrl);
-    setAnalyzedParams(parseTrackingParams(initialUrl));
+    const initializeComponent = async () => {
+      const initialUrl =
+        typeof window !== "undefined"
+          ? window.location.href
+          : "https://utm-demo.vercel.app/";
 
-    // Check for gtag availability with a more robust approach
-    const checkGtag = () => {
-      if (typeof window !== "undefined" && typeof window.gtag === "function") {
-        console.log("GA: gtag detected and available");
-        setIsGtagAvailable(true);
-        return true;
+      setUrlInput(initialUrl);
+      setCurrentUrl(initialUrl);
+      setAnalyzedParams(parseTrackingParams(initialUrl));
+
+      // Wait for Google Analytics to be available
+      console.log("GA: Waiting for Google Analytics to load...");
+      const gaReady = await waitForGA();
+      setIsGtagReady(gaReady);
+
+      if (gaReady) {
+        console.log("GA: Google Analytics is ready");
+      } else {
+        console.warn("GA: Google Analytics failed to load");
       }
-      return false;
     };
 
-    // Check immediately
-    if (!checkGtag()) {
-      // If not available, check periodically for a few seconds
-      console.log(
-        "GA: gtag not immediately available, checking periodically..."
-      );
-      let attempts = 0;
-      const maxAttempts = 20; // 4 seconds total
-
-      const interval = setInterval(() => {
-        attempts++;
-        if (checkGtag() || attempts >= maxAttempts) {
-          clearInterval(interval);
-          if (attempts >= maxAttempts) {
-            console.log("GA: gtag not detected after waiting");
-          }
-        }
-      }, 200); // Check every 200ms
-    }
+    initializeComponent();
   }, []);
 
-  // Send a page_view event whenever the analyzed URL changes
+  // Send page_view when URL changes and GA is ready
   useEffect(() => {
-    console.log("GA: page_view effect triggered", {
-      currentUrl,
-      isGtagAvailable,
-    });
-
-    if (!currentUrl || !isGtagAvailable) {
-      console.log("GA: Skipping page_view - missing requirements", {
+    if (!currentUrl || !isGtagReady) {
+      console.log("GA: Skipping page_view", {
         currentUrl: !!currentUrl,
-        isGtagAvailable,
+        isGtagReady,
       });
       return;
     }
 
-    try {
-      const urlObj = new URL(currentUrl);
-      const params = parseTrackingParams(currentUrl);
+    const params = parseTrackingParams(currentUrl);
 
-      console.log("GA: Sending page_view event", { currentUrl, params });
+    // Send page view
+    sendPageView(currentUrl, `UTM Demo - ${currentUrl}`);
 
-      // Send page_view with proper GA4 format
-      const pageViewParams: Record<string, string> = {
-        page_title: `UTM Demo - ${urlObj.pathname}`,
-        page_location: currentUrl,
-      };
-
-      // Add UTM parameters if they exist
-      if (params.utm_source) pageViewParams.campaign_source = params.utm_source;
-      if (params.utm_medium) pageViewParams.campaign_medium = params.utm_medium;
-      if (params.utm_campaign)
-        pageViewParams.campaign_name = params.utm_campaign;
-      if (params.utm_term) pageViewParams.campaign_term = params.utm_term;
-      if (params.utm_content)
-        pageViewParams.campaign_content = params.utm_content;
-      if (params.utm_id) pageViewParams.campaign_id = params.utm_id;
-
-      // Add other tracking IDs as custom parameters
-      if (params.gclid) pageViewParams.gclid = params.gclid;
-      if (params.fbclid) pageViewParams.fbclid = params.fbclid;
-      if (params.mc_cid) pageViewParams.mc_cid = params.mc_cid;
-
-      window.gtag("event", "page_view", pageViewParams);
-
-      // Also send a config update with campaign info for proper attribution
-      if (Object.keys(params).length > 0) {
-        window.gtag(
-          "config",
-          process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-XXXXXXXXXX",
-          {
-            campaign_source: params.utm_source,
-            campaign_medium: params.utm_medium,
-            campaign_name: params.utm_campaign,
-            campaign_term: params.utm_term,
-            campaign_content: params.utm_content,
-            campaign_id: params.utm_id,
-          }
-        );
-      }
-
-      console.log(
-        `GA: Successfully sent page_view for: ${currentUrl}`,
-        pageViewParams
-      );
-      setLastEventSent("page_view");
-    } catch (error: unknown) {
-      console.error("GA Error: Failed to send page_view.", error);
+    // Configure GA with campaign parameters for proper attribution
+    if (Object.keys(params).length > 0) {
+      configureWithCampaign(params);
     }
-  }, [currentUrl, isGtagAvailable]);
+
+    setLastEventSent("page_view");
+  }, [currentUrl, isGtagReady]);
 
   const handleSimulate = () => {
     setCurrentUrl(urlInput);
@@ -215,47 +160,17 @@ export default function UtmTracker() {
   };
 
   const handleSendCustomEvent = () => {
-    if (!isGtagAvailable) {
+    if (!isGAAvailable()) {
       alert(
-        "Google Analytics not loaded. Make sure NEXT_PUBLIC_GA_MEASUREMENT_ID is set."
+        "Google Analytics not loaded. Make sure your measurement ID is correct."
       );
       return;
     }
 
-    const eventName = "utm_demo_conversion";
-
-    // Format UTM parameters for GA4
-    const eventParams: Record<string, string | undefined> = {
-      event_category: "UTM Demo",
-      event_label: "Simulated Conversion",
-      // Standard GA4 campaign parameters
-      campaign_source: analyzedParams.utm_source,
-      campaign_medium: analyzedParams.utm_medium,
-      campaign_name: analyzedParams.utm_campaign,
-      campaign_term: analyzedParams.utm_term,
-      campaign_content: analyzedParams.utm_content,
-      campaign_id: analyzedParams.utm_id,
-      // Additional tracking parameters as custom parameters
-      gclid: analyzedParams.gclid,
-      fbclid: analyzedParams.fbclid,
-      mc_cid: analyzedParams.mc_cid,
-    };
-
-    // Remove undefined values
-    Object.keys(eventParams).forEach((key) => {
-      if (eventParams[key] === undefined) {
-        delete eventParams[key];
-      }
-    });
-
-    window.gtag("event", eventName, eventParams);
-    console.log(
-      `GA: Sent custom event '${eventName}' with params:`,
-      eventParams
-    );
-    setLastEventSent(eventName);
+    sendConversion("utm_demo_conversion", analyzedParams);
+    setLastEventSent("utm_demo_conversion");
     alert(
-      `Custom event '${eventName}' sent to GA! Check the console and your GA Realtime reports.`
+      "Custom event 'utm_demo_conversion' sent to GA! Check the console and your GA Realtime reports."
     );
   };
 
@@ -299,7 +214,7 @@ export default function UtmTracker() {
                 <div className="flex gap-2">
                   <Input
                     id="simulate-url"
-                    placeholder="e.g., https://yourwebsite.com/?utm_source=google"
+                    placeholder="e.g., https://utm-demo.vercel.app/products/summer-sale?utm_source=google"
                     value={urlInput}
                     onChange={(e: ChangeEvent<HTMLInputElement>) =>
                       setUrlInput(e.target.value)
@@ -397,10 +312,10 @@ export default function UtmTracker() {
                 <CardDescription>
                   This simulates events sent to GA. Check your GA Realtime
                   dashboard to see them appear.
-                  {!isGtagAvailable && (
+                  {!isGtagReady && (
                     <span className="text-yellow-500 block mt-1">
-                      GA not detected. Events will only be logged to the
-                      console.
+                      GA {isGAAvailable() ? "loading..." : "not detected"}.
+                      Events will only be logged to the console.
                     </span>
                   )}
                 </CardDescription>
@@ -410,7 +325,7 @@ export default function UtmTracker() {
                   onClick={handleSendCustomEvent}
                   size="lg"
                   className="w-full"
-                  disabled={!isGtagAvailable}
+                  disabled={!isGtagReady}
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   Send Conversion Event
