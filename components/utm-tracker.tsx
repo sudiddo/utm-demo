@@ -20,26 +20,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
   ChevronRight,
-  FileText,
   Link,
   ListTree,
-  Send,
   Sparkles,
   TestTube2,
   CheckCircle,
   AlertCircle,
-  Bug,
 } from "lucide-react";
-import {
-  waitForGA,
-  sendPageView,
-  sendConversion,
-  logCurrentUTMParams,
-  debugUTMTracking,
-  isGAAvailable,
-  diagnoseNotSetIssues,
-  validateUTMAttribution,
-} from "@/lib/analytics";
+import { waitForGA, sendPageView, logCurrentUTMParams } from "@/lib/analytics";
 
 interface UtmParams {
   [key: string]: string;
@@ -111,7 +99,7 @@ export default function UtmTracker() {
   const [gaStatus, setGaStatus] = useState<"loading" | "ready" | "failed">(
     "loading"
   );
-  const [lastEventSent, setLastEventSent] = useState<string | null>(null);
+  const [, setLastEventSent] = useState<string | null>(null);
 
   // Initialize component and wait for Google Analytics
   useEffect(() => {
@@ -175,49 +163,49 @@ export default function UtmTracker() {
     setAnalyzedParams(parseTrackingParams(urlInput));
   };
 
-  const handleSendCustomEvent = () => {
-    if (!isGAAvailable()) {
-      alert(
-        "Google Analytics not loaded. Make sure your measurement ID is correct."
-      );
-      return;
-    }
+  // const handleSendCustomEvent = () => {
+  //   if (!isGAAvailable()) {
+  //     alert(
+  //       "Google Analytics not loaded. Make sure your measurement ID is correct."
+  //     );
+  //     return;
+  //   }
 
-    // Send conversion event - GA4 automatically associates current UTM parameters
-    sendConversion("utm_demo_conversion", {
-      demo_type: "manual_test",
-      current_url: currentUrl,
-    });
+  //   // Send conversion event - GA4 automatically associates current UTM parameters
+  //   sendConversion("utm_demo_conversion", {
+  //     demo_type: "manual_test",
+  //     current_url: currentUrl,
+  //   });
 
-    setLastEventSent("utm_demo_conversion");
-    alert(
-      "Custom event 'utm_demo_conversion' sent to GA4! UTM parameters from the current URL are automatically tracked. Check the console and your GA4 Realtime reports."
-    );
-  };
+  //   setLastEventSent("utm_demo_conversion");
+  //   alert(
+  //     "Custom event 'utm_demo_conversion' sent to GA4! UTM parameters from the current URL are automatically tracked. Check the console and your GA4 Realtime reports."
+  //   );
+  // };
 
-  const handleDebugUTM = () => {
-    debugUTMTracking();
-    alert(
-      "UTM debug info logged to console. Check your browser's developer tools console for detailed information."
-    );
-  };
+  // const handleDebugUTM = () => {
+  //   debugUTMTracking();
+  //   alert(
+  //     "UTM debug info logged to console. Check your browser's developer tools console for detailed information."
+  //   );
+  // };
 
-  const handleDiagnoseNotSet = () => {
-    diagnoseNotSetIssues();
-    const validation = validateUTMAttribution();
+  // const handleDiagnoseNotSet = () => {
+  //   diagnoseNotSetIssues();
+  //   const validation = validateUTMAttribution();
 
-    if (!validation.hasRequiredUTMs) {
-      alert(
-        `⚠️ Found "(not set)" issues!\n\nMissing parameters: ${validation.missingCritical.join(
-          ", "
-        )}\n\nCheck the console for detailed solutions.`
-      );
-    } else {
-      alert(
-        "✅ Your UTM parameters look good! If you still see '(not set)' in GA4, wait 24-48 hours for data processing or check your report date range."
-      );
-    }
-  };
+  //   if (!validation.hasRequiredUTMs) {
+  //     alert(
+  //       `⚠️ Found "(not set)" issues!\n\nMissing parameters: ${validation.missingCritical.join(
+  //         ", "
+  //       )}\n\nCheck the console for detailed solutions.`
+  //     );
+  //   } else {
+  //     alert(
+  //       "✅ Your UTM parameters look good! If you still see '(not set)' in GA4, wait 24-48 hours for data processing or check your report date range."
+  //     );
+  //   }
+  // };
 
   const handleExampleClick = (url: string) => {
     setUrlInput(url);
@@ -382,106 +370,6 @@ export default function UtmTracker() {
                     No tracking parameters found.
                   </p>
                 )}
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Send className="w-6 h-6" />
-                  <span>GA4 Event Testing & Diagnostics</span>
-                </CardTitle>
-                <CardDescription>
-                  GA4 automatically associates UTM parameters from the current
-                  URL with all events. Check GA4 Reports → Acquisition → Traffic
-                  Acquisition.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex flex-col items-center gap-4">
-                <div className="flex gap-2 w-full">
-                  <Button
-                    onClick={handleSendCustomEvent}
-                    size="lg"
-                    className="flex-1"
-                    disabled={gaStatus !== "ready"}
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    Send Test Event
-                    {gaStatus === "ready" && (
-                      <CheckCircle className="w-4 h-4 ml-2 text-green-400" />
-                    )}
-                  </Button>
-                  <Button
-                    onClick={handleDebugUTM}
-                    size="lg"
-                    variant="outline"
-                    disabled={gaStatus !== "ready"}
-                  >
-                    <Bug className="w-4 h-4" />
-                  </Button>
-                </div>
-
-                {/* New "(not set)" diagnostic button */}
-                <Button
-                  onClick={handleDiagnoseNotSet}
-                  size="lg"
-                  variant="outline"
-                  className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
-                  disabled={gaStatus !== "ready"}
-                >
-                  <AlertCircle className="w-4 h-4 mr-2" />
-                  Diagnose &ldquo;(not set)&rdquo; Issues
-                </Button>
-
-                {/* Help section for "(not set)" issues */}
-                <div className="w-full mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                  <h4 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2 flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4" />
-                    Fixing &ldquo;(not set)&rdquo; Values in GA4
-                  </h4>
-                  <div className="text-sm text-yellow-700 dark:text-yellow-300 space-y-2">
-                    <p>
-                      <strong>Common Causes:</strong>
-                    </p>
-                    <ul className="list-disc list-inside space-y-1 ml-2">
-                      <li>Users accessing pages without UTM parameters</li>
-                      <li>
-                        Missing required parameters (source, medium, campaign)
-                      </li>
-                      <li>Data processing delays (wait 24-48 hours)</li>
-                      <li>UTM parameters with spaces or special characters</li>
-                    </ul>
-                    <p>
-                      <strong>Quick Solutions:</strong>
-                    </p>
-                    <ul className="list-disc list-inside space-y-1 ml-2">
-                      <li>
-                        Always include utm_source, utm_medium, utm_campaign
-                      </li>
-                      <li>Use UTM builder tools for consistent formatting</li>
-                      <li>
-                        Check GA4 Realtime reports for immediate validation
-                      </li>
-                      <li>
-                        Review Traffic Acquisition reports after 24-48 hours
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-
-                {lastEventSent && (
-                  <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Last event sent to GA4:
-                    <span className="font-semibold ml-1">{lastEventSent}</span>
-                  </p>
-                )}
-                <div className="text-xs text-slate-500 dark:text-slate-400 text-center">
-                  💡 Pro tip: UTM data appears in GA4 Reports → Acquisition →
-                  Traffic Acquisition.
-                  <br />
-                  Look for &ldquo;Source/Medium&rdquo; and
-                  &ldquo;Campaign&rdquo; dimensions.
-                </div>
               </CardContent>
             </Card>
           </div>
