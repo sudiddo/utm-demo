@@ -1,7 +1,8 @@
 interface Window {
   gtag: (
-    event: string,
-    action: string,
-    params: { [key: string]: string | number | undefined }
+    command: "config" | "event" | "js",
+    targetId: string | Date,
+    params?: { [key: string]: string | number | boolean | undefined }
   ) => void;
+  dataLayer: unknown[];
 }

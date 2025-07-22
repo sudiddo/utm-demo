@@ -26,6 +26,8 @@ import {
   Send,
   Sparkles,
   TestTube2,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
 import {
   waitForGA,
@@ -102,6 +104,9 @@ export default function UtmTracker() {
   const [analyzedParams, setAnalyzedParams] = useState<UtmParams>({});
   const [urlInput, setUrlInput] = useState<string>("");
   const [isGtagReady, setIsGtagReady] = useState<boolean>(false);
+  const [gaStatus, setGaStatus] = useState<"loading" | "ready" | "failed">(
+    "loading"
+  );
   const [lastEventSent, setLastEventSent] = useState<string | null>(null);
 
   // Initialize component and wait for Google Analytics
@@ -116,13 +121,18 @@ export default function UtmTracker() {
       setCurrentUrl(initialUrl);
       setAnalyzedParams(parseTrackingParams(initialUrl));
 
-      // Wait for Google Analytics to be available
-      console.log("GA: Waiting for Google Analytics to load...");
+      // Wait for Google Analytics to be available (@next/third-parties)
+      console.log(
+        "GA: Waiting for @next/third-parties Google Analytics to load..."
+      );
+      setGaStatus("loading");
+
       const gaReady = await waitForGA();
       setIsGtagReady(gaReady);
+      setGaStatus(gaReady ? "ready" : "failed");
 
       if (gaReady) {
-        console.log("GA: Google Analytics is ready");
+        console.log("GA: @next/third-parties Google Analytics is ready");
       } else {
         console.warn("GA: Google Analytics failed to load");
       }
@@ -180,6 +190,31 @@ export default function UtmTracker() {
     setAnalyzedParams(parseTrackingParams(url));
   };
 
+  const getGAStatusDisplay = () => {
+    switch (gaStatus) {
+      case "loading":
+        return {
+          icon: <AlertCircle className="w-4 h-4 text-yellow-500" />,
+          text: "Google Analytics loading...",
+          color: "text-yellow-600 dark:text-yellow-400",
+        };
+      case "ready":
+        return {
+          icon: <CheckCircle className="w-4 h-4 text-green-500" />,
+          text: "@next/third-parties GA ready",
+          color: "text-green-600 dark:text-green-400",
+        };
+      case "failed":
+        return {
+          icon: <AlertCircle className="w-4 h-4 text-red-500" />,
+          text: "GA failed to load",
+          color: "text-red-600 dark:text-red-400",
+        };
+    }
+  };
+
+  const statusDisplay = getGAStatusDisplay();
+
   return (
     <div className="bg-slate-50 dark:bg-slate-950 min-h-screen p-4 sm:p-6 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -191,6 +226,14 @@ export default function UtmTracker() {
             See how marketing parameters are extracted from a URL and sent to
             analytics. Paste a URL or use an example to get started.
           </p>
+
+          {/* GA Status Indicator */}
+          <div
+            className={`mt-4 flex items-center justify-center gap-2 ${statusDisplay.color}`}
+          >
+            {statusDisplay.icon}
+            <span className="text-sm font-medium">{statusDisplay.text}</span>
+          </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -310,14 +353,8 @@ export default function UtmTracker() {
                   <span>Google Analytics Events</span>
                 </CardTitle>
                 <CardDescription>
-                  This simulates events sent to GA. Check your GA Realtime
-                  dashboard to see them appear.
-                  {!isGtagReady && (
-                    <span className="text-yellow-500 block mt-1">
-                      GA {isGAAvailable() ? "loading..." : "not detected"}.
-                      Events will only be logged to the console.
-                    </span>
-                  )}
+                  This simulates events sent to GA via @next/third-parties.
+                  Check your GA Realtime dashboard to see them appear.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center gap-4">
@@ -325,10 +362,13 @@ export default function UtmTracker() {
                   onClick={handleSendCustomEvent}
                   size="lg"
                   className="w-full"
-                  disabled={!isGtagReady}
+                  disabled={gaStatus !== "ready"}
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   Send Conversion Event
+                  {gaStatus === "ready" && (
+                    <CheckCircle className="w-4 h-4 ml-2 text-green-400" />
+                  )}
                 </Button>
                 {lastEventSent && (
                   <p className="text-sm text-slate-500 dark:text-slate-400">

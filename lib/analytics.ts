@@ -3,12 +3,17 @@ type GtagParams = { [key: string]: string | number | undefined };
 
 export const GA_MEASUREMENT_ID = "G-R64CF5TY9M";
 
-// Check if GA is available
+// Check if GA is available - updated for @next/third-parties
 export const isGAAvailable = (): boolean => {
-  return typeof window !== "undefined" && typeof window.gtag === "function";
+  return (
+    typeof window !== "undefined" &&
+    typeof window.gtag === "function" &&
+    window.dataLayer &&
+    Array.isArray(window.dataLayer)
+  );
 };
 
-// Wait for GA to be available
+// Wait for GA to be available - optimized for @next/third-parties
 export const waitForGA = (): Promise<boolean> => {
   return new Promise((resolve) => {
     if (isGAAvailable()) {
@@ -17,7 +22,7 @@ export const waitForGA = (): Promise<boolean> => {
     }
 
     let attempts = 0;
-    const maxAttempts = 50; // 10 seconds total
+    const maxAttempts = 100; // 20 seconds total (more time for @next/third-parties)
 
     const interval = setInterval(() => {
       attempts++;
@@ -124,4 +129,15 @@ export const configureWithCampaign = (
   } catch (error) {
     console.error("GA: Error updating config", error);
   }
+};
+
+// New: Check if @next/third-parties GoogleAnalytics is ready
+export const isThirdPartyGAReady = (): boolean => {
+  return (
+    isGAAvailable() &&
+    // Additional check for @next/third-parties specific setup
+    typeof window !== "undefined" &&
+    document.querySelector('script[src*="googletagmanager.com/gtag/js"]') !==
+      null
+  );
 };
