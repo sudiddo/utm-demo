@@ -1,181 +1,334 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
+import { useState, useEffect, ChangeEvent } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  ChevronRight,
+  FileText,
+  Link,
+  ListTree,
+  Send,
+  Sparkles,
+  TestTube2,
+} from "lucide-react";
 
 interface UtmParams {
-  [key: string]: string
+  [key: string]: string;
 }
 
-export default function UtmTracker() {
-  const [currentUrl, setCurrentUrl] = useState<string>("")
-  const [utmParameters, setUtmParameters] = useState<UtmParams>({})
-  const [simulatedUrlInput, setSimulatedUrlInput] = useState<string>("")
+// A more robust list of UTM and common tracking parameters
+const TRACKING_KEYS = [
+  // Standard UTM
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "utm_id",
+  // Google Ads
+  "gclid", // Google Click ID
+  "utm_source_platform",
+  "utm_creative_format",
+  "utm_marketing_tactic",
+  // Facebook
+  "fbclid", // Facebook Click ID
+  "dclid", // Display Click ID
+  // Others
+  "msclkid", // Microsoft Click ID
+  "mc_cid", // Mailchimp Campaign ID
+  "mc_eid", // Mailchimp Email ID
+];
 
-  // Function to parse UTM parameters from a given URL string
-  const parseUtmParams = (url: string): UtmParams => {
-    const params: UtmParams = {}
-    try {
-      const urlObj = new URL(url)
-      const searchParams = urlObj.searchParams
+const EXAMPLE_URLS = [
+  {
+    name: "Google Ads",
+    url: "https://yourshop.com/products/summer-sale?utm_source=google&utm_medium=cpc&utm_campaign=summer_launch&utm_term=beachwear&gclid=Cj0KCQjwgNanBhDUARIsAkhg3di9nS9tC9W4ZzY0",
+  },
+  {
+    name: "Facebook Campaign",
+    url: "https://yourshop.com/landing/early-access?utm_source=facebook&utm_medium=social_paid&utm_campaign=q3_lookbook&fbclid=IwAR2-gT8DqXkP6A-...",
+  },
+  {
+    name: "Email Newsletter",
+    url: "https://yourshop.com/?utm_source=newsletter&utm_medium=email&utm_campaign=weekly_deals_august&mc_cid=a1b2c3d4e5",
+  },
+];
 
-      // Common UTM parameters
-      const utmKeys = [
-        "utm_source",
-        "utm_medium",
-        "utm_campaign",
-        "utm_term",
-        "utm_content",
-        "utm_id",
-        "utm_source_platform",
-        "utm_creative_format",
-        "utm_marketing_tactic",
-      ]
+// Utility function to parse parameters from a URL
+const parseTrackingParams = (url: string): UtmParams => {
+  const params: UtmParams = {};
+  if (!url) return params;
 
-      utmKeys.forEach((key) => {
-        if (searchParams.has(key)) {
-          params[key] = searchParams.get(key) || ""
-        }
-      })
-    } catch (error) {
-      console.error("Invalid URL:", error)
-    }
-    return params
-  }
+  try {
+    const urlObj = new URL(url);
+    const searchParams = urlObj.searchParams;
 
-  // Effect to run on component mount to get initial URL and parse UTMs
-  useEffect(() => {
-    // In a real browser environment, window.location.href would be available
-    // For Next.js server-side rendering, window is not defined initially.
-    // We'll use a placeholder for the initial render and update on client-side.
-    const initialUrl = typeof window !== "undefined" ? window.location.href : "https://example.com"
-    setCurrentUrl(initialUrl)
-    setUtmParameters(parseUtmParams(initialUrl))
-    setSimulatedUrlInput(initialUrl) // Pre-fill input with current URL
-  }, [])
-
-  useEffect(() => {
-    // Skip if we don't yet have a valid absolute URL (e.g. first render)
-    if (!currentUrl || !/^https?:\/\//.test(currentUrl)) return
-
-    if (typeof window !== "undefined" && (window as any).gtag) {
-      try {
-        const urlObj = new URL(currentUrl)
-        ;(window as any).gtag("event", "page_view", {
-          page_path: urlObj.pathname + urlObj.search,
-          page_location: currentUrl,
-          page_title: document.title,
-        })
-        console.log("GA: Sent page_view for:", currentUrl)
-      } catch (error) {
-        console.error(
-          "GA Error: Failed to construct URL for page_view event. Skipping GA event.",
-          error,
-          "URL:",
-          currentUrl,
-        )
+    TRACKING_KEYS.forEach((key) => {
+      if (searchParams.has(key)) {
+        params[key] = searchParams.get(key) || "";
       }
-    }
-  }, [currentUrl])
-
-  // Handle simulation button click
-  const handleSimulateUrl = () => {
-    setCurrentUrl(simulatedUrlInput)
-    setUtmParameters(parseUtmParams(simulatedUrlInput))
+    });
+  } catch (error: unknown) {
+    // Silently fail for invalid URLs during typing
+    console.log("error", error);
   }
+  return params;
+};
 
-  const sendCustomEvent = () => {
-    if (typeof window !== "undefined" && (window as any).gtag) {
-      ;(window as any).gtag("event", "utm_demo_event", {
-        event_category: "UTM Demo",
-        event_label: "Simulated Event with UTMs",
-        ...utmParameters, // Pass all detected UTM parameters as event parameters
-      })
-      console.log("GA: Sent custom event with UTMs:", utmParameters)
-      alert("Custom event 'utm_demo_event' sent to Google Analytics (check console for details)!")
-    } else {
-      alert("Google Analytics not loaded. Make sure NEXT_PUBLIC_GA_MEASUREMENT_ID is set.")
+export default function UtmTracker() {
+  const [currentUrl, setCurrentUrl] = useState<string>("");
+  const [analyzedParams, setAnalyzedParams] = useState<UtmParams>({});
+  const [urlInput, setUrlInput] = useState<string>("");
+  const [isGtagAvailable, setIsGtagAvailable] = useState<boolean>(false);
+  const [lastEventSent, setLastEventSent] = useState<string | null>(null);
+
+  // On mount, get the initial URL and check for Google Analytics
+  useEffect(() => {
+    const initialUrl =
+      typeof window !== "undefined"
+        ? window.location.href
+        : "https://yourshop.com/";
+    setUrlInput(initialUrl);
+    setCurrentUrl(initialUrl);
+    setAnalyzedParams(parseTrackingParams(initialUrl));
+
+    if (typeof window.gtag === "function") {
+      setIsGtagAvailable(true);
     }
-  }
+  }, []);
+
+  // Send a page_view event whenever the analyzed URL changes
+  useEffect(() => {
+    if (!currentUrl || !isGtagAvailable) return;
+
+    try {
+      const urlObj = new URL(currentUrl);
+      window.gtag("event", "page_view", {
+        page_path: urlObj.pathname + urlObj.search,
+        page_location: currentUrl,
+        page_title: `UTM Demo - ${currentUrl}`,
+      });
+      console.log(`GA: Sent page_view for: ${currentUrl}`);
+      setLastEventSent("page_view");
+    } catch (error: unknown) {
+      console.error("GA Error: Failed to send page_view.", error);
+    }
+  }, [currentUrl, isGtagAvailable]);
+
+  const handleSimulate = () => {
+    setCurrentUrl(urlInput);
+    setAnalyzedParams(parseTrackingParams(urlInput));
+  };
+
+  const handleSendCustomEvent = () => {
+    if (!isGtagAvailable) {
+      alert(
+        "Google Analytics not loaded. Make sure NEXT_PUBLIC_GA_MEASUREMENT_ID is set."
+      );
+      return;
+    }
+
+    const eventName = "utm_demo_conversion";
+    const eventParams = {
+      event_category: "UTM Demo",
+      event_label: "Simulated Conversion",
+      ...analyzedParams,
+    };
+
+    window.gtag("event", eventName, eventParams);
+    console.log(
+      `GA: Sent custom event '${eventName}' with params:`,
+      analyzedParams
+    );
+    setLastEventSent(eventName);
+    alert(
+      `Custom event '${eventName}' sent to GA! Check the console and your GA Realtime reports.`
+    );
+  };
+
+  const handleExampleClick = (url: string) => {
+    setUrlInput(url);
+    setCurrentUrl(url);
+    setAnalyzedParams(parseTrackingParams(url));
+  };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-50 dark:bg-gray-950 p-4">
-      <Card className="w-full max-w-3xl shadow-lg">
-        <CardHeader>
-          <CardTitle>UTM Parameter Explainer</CardTitle>
-          <CardDescription>
-            {
-              "UTM parameters are like special tags you add to website links. They help you track where visitors come from and which campaigns perform best."
-            }
-            <br />
-            {
-              "For example, if someone clicks a link with utm_source=facebook and utm_medium=social, you know they arrived from a Facebook social-media post."
-            }
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Current URL Being Analyzed:</h3>
-            <p className="break-all p-3 bg-gray-100 dark:bg-gray-800 rounded-md text-sm font-mono">{currentUrl}</p>
-          </div>
+    <div className="bg-slate-50 dark:bg-slate-950 min-h-screen p-4 sm:p-6 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <header className="text-center mb-8">
+          <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+            UTM & Ad Parameter Simulator
+          </h1>
+          <p className="mt-2 text-lg text-slate-600 dark:text-slate-400 max-w-3xl mx-auto">
+            See how marketing parameters are extracted from a URL and sent to
+            analytics. Paste a URL or use an example to get started.
+          </p>
+        </header>
 
-          <div>
-            <h3 className="text-lg font-semibold mb-2">Detected UTM Parameters:</h3>
-            {Object.keys(utmParameters).length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[150px]">Parameter</TableHead>
-                    <TableHead>Value</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(utmParameters).map(([key, value]) => (
-                    <TableRow key={key}>
-                      <TableCell className="font-medium">{key}</TableCell>
-                      <TableCell>{value}</TableCell>
-                    </TableRow>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          {/* Left Column: Simulator */}
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TestTube2 className="w-6 h-6" />
+                <span>URL Simulator</span>
+              </CardTitle>
+              <CardDescription>
+                Enter a URL with tracking parameters to see them analyzed on the
+                right.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <label htmlFor="simulate-url" className="font-medium">
+                  Enter URL to Analyze
+                </label>
+                <div className="flex gap-2">
+                  <Input
+                    id="simulate-url"
+                    placeholder="e.g., https://yourwebsite.com/?utm_source=google"
+                    value={urlInput}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setUrlInput(e.target.value)
+                    }
+                    className="flex-1 font-mono text-sm"
+                  />
+                  <Button onClick={handleSimulate}>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Analyze
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-medium mb-3">Or, try an example:</h4>
+                <div className="space-y-2">
+                  {EXAMPLE_URLS.map((example) => (
+                    <button
+                      key={example.name}
+                      onClick={() => handleExampleClick(example.url)}
+                      className="w-full text-left p-3 bg-slate-100 dark:bg-slate-800/50 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700/50 transition-colors group"
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                          {example.name}
+                        </span>
+                        <ChevronRight className="w-5 h-5 text-slate-400 dark:text-slate-500 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                      <p className="text-xs font-mono text-slate-500 dark:text-slate-400 truncate mt-1">
+                        {example.url}
+                      </p>
+                    </button>
                   ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <p className="text-muted-foreground">No UTM parameters found in the current URL.</p>
-            )}
-          </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold mb-2">Simulate a URL with UTMs:</h3>
-            <Label htmlFor="simulate-url">Enter a URL with UTMs:</Label>
-            <div className="flex gap-2">
-              <Input
-                id="simulate-url"
-                placeholder="e.g., https://yourwebsite.com/?utm_source=google&utm_medium=cpc&utm_campaign=summer_sale"
-                value={simulatedUrlInput}
-                onChange={(e) => setSimulatedUrlInput(e.target.value)}
-                className="flex-1"
-              />
-              <Button onClick={handleSimulateUrl}>Simulate</Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Try pasting a URL like:
-              `https://example.com/product?utm_source=newsletter&utm_medium=email&utm_campaign=new_arrivals`
-            </p>
-          </div>
+          {/* Right Column: Results */}
+          <div className="space-y-8">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Link className="w-6 h-6" />
+                  <span>Analyzed URL</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="break-all p-3 bg-slate-100 dark:bg-gray-800 rounded-md text-sm font-mono">
+                  {currentUrl || "No URL analyzed yet."}
+                </p>
+              </CardContent>
+            </Card>
 
-          <div className="space-y-2">
-            <h3 className="text-lg font-semibold mb-2">Simulate Google Analytics Event:</h3>
-            <p className="text-sm text-muted-foreground mb-3">
-              Click this button to simulate sending a custom event to Google Analytics, including the currently detected
-              UTM parameters.
-            </p>
-            <Button onClick={sendCustomEvent}>Send Custom GA Event</Button>
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <ListTree className="w-6 h-6" />
+                  <span>Detected Parameters</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {Object.keys(analyzedParams).length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[180px]">Parameter</TableHead>
+                        <TableHead>Value</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {Object.entries(analyzedParams).map(([key, value]) => (
+                        <TableRow key={key}>
+                          <TableCell className="font-medium">{key}</TableCell>
+                          <TableCell className="font-mono text-xs">
+                            {value}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-slate-500 dark:text-slate-400 text-center py-4">
+                    No tracking parameters found.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Send className="w-6 h-6" />
+                  <span>Google Analytics Events</span>
+                </CardTitle>
+                <CardDescription>
+                  This simulates events sent to GA. Check your GA Realtime
+                  dashboard to see them appear.
+                  {!isGtagAvailable && (
+                    <span className="text-yellow-500 block mt-1">
+                      GA not detected. Events will only be logged to the
+                      console.
+                    </span>
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col items-center gap-4">
+                <Button
+                  onClick={handleSendCustomEvent}
+                  size="lg"
+                  className="w-full"
+                  disabled={!isGtagAvailable}
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Send Conversion Event
+                </Button>
+                {lastEventSent && (
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    Last event sent to GA:
+                    <span className="font-semibold ml-1">{lastEventSent}</span>
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
-  )
+  );
 }
