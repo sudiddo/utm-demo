@@ -37,6 +37,8 @@ import {
   logCurrentUTMParams,
   debugUTMTracking,
   isGAAvailable,
+  diagnoseNotSetIssues,
+  validateUTMAttribution,
 } from "@/lib/analytics";
 
 interface UtmParams {
@@ -198,6 +200,23 @@ export default function UtmTracker() {
     alert(
       "UTM debug info logged to console. Check your browser's developer tools console for detailed information."
     );
+  };
+
+  const handleDiagnoseNotSet = () => {
+    diagnoseNotSetIssues();
+    const validation = validateUTMAttribution();
+
+    if (!validation.hasRequiredUTMs) {
+      alert(
+        `⚠️ Found "(not set)" issues!\n\nMissing parameters: ${validation.missingCritical.join(
+          ", "
+        )}\n\nCheck the console for detailed solutions.`
+      );
+    } else {
+      alert(
+        "✅ Your UTM parameters look good! If you still see '(not set)' in GA4, wait 24-48 hours for data processing or check your report date range."
+      );
+    }
   };
 
   const handleExampleClick = (url: string) => {
@@ -370,7 +389,7 @@ export default function UtmTracker() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Send className="w-6 h-6" />
-                  <span>GA4 Event Testing</span>
+                  <span>GA4 Event Testing & Diagnostics</span>
                 </CardTitle>
                 <CardDescription>
                   GA4 automatically associates UTM parameters from the current
@@ -401,6 +420,55 @@ export default function UtmTracker() {
                     <Bug className="w-4 h-4" />
                   </Button>
                 </div>
+
+                {/* New "(not set)" diagnostic button */}
+                <Button
+                  onClick={handleDiagnoseNotSet}
+                  size="lg"
+                  variant="outline"
+                  className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                  disabled={gaStatus !== "ready"}
+                >
+                  <AlertCircle className="w-4 h-4 mr-2" />
+                  Diagnose &ldquo;(not set)&rdquo; Issues
+                </Button>
+
+                {/* Help section for "(not set)" issues */}
+                <div className="w-full mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                  <h4 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    Fixing &ldquo;(not set)&rdquo; Values in GA4
+                  </h4>
+                  <div className="text-sm text-yellow-700 dark:text-yellow-300 space-y-2">
+                    <p>
+                      <strong>Common Causes:</strong>
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li>Users accessing pages without UTM parameters</li>
+                      <li>
+                        Missing required parameters (source, medium, campaign)
+                      </li>
+                      <li>Data processing delays (wait 24-48 hours)</li>
+                      <li>UTM parameters with spaces or special characters</li>
+                    </ul>
+                    <p>
+                      <strong>Quick Solutions:</strong>
+                    </p>
+                    <ul className="list-disc list-inside space-y-1 ml-2">
+                      <li>
+                        Always include utm_source, utm_medium, utm_campaign
+                      </li>
+                      <li>Use UTM builder tools for consistent formatting</li>
+                      <li>
+                        Check GA4 Realtime reports for immediate validation
+                      </li>
+                      <li>
+                        Review Traffic Acquisition reports after 24-48 hours
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
                 {lastEventSent && (
                   <p className="text-sm text-slate-500 dark:text-slate-400">
                     Last event sent to GA4:
