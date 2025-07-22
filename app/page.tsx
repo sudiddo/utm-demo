@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import UtmTracker from "@/components/utm-tracker";
 import {
@@ -37,7 +37,7 @@ interface UtmParams {
   [key: string]: string;
 }
 
-export default function HomePage() {
+function HomePageContent() {
   const searchParams = useSearchParams();
   const [detectedParams, setDetectedParams] = useState<UtmParams>({});
   const [isGaReady, setIsGaReady] = useState(false);
@@ -425,4 +425,29 @@ export default function HomePage() {
   }
 
   return <UtmTracker />;
+}
+
+function LoadingFallback() {
+  return (
+    <div className="bg-slate-50 dark:bg-slate-950 min-h-screen p-4 sm:p-6 md:p-8">
+      <div className="max-w-7xl mx-auto">
+        <header className="text-center mb-8">
+          <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
+            UTM & Ad Parameter Tracker
+          </h1>
+          <p className="mt-2 text-lg text-slate-600 dark:text-slate-400 max-w-3xl mx-auto">
+            Loading campaign tracking system...
+          </p>
+        </header>
+      </div>
+    </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <HomePageContent />
+    </Suspense>
+  );
 }

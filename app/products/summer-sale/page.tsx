@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Card,
@@ -39,7 +39,7 @@ interface UtmParams {
   [key: string]: string;
 }
 
-export default function SummerSalePage() {
+function SummerSaleContent() {
   const searchParams = useSearchParams();
   const [detectedParams, setDetectedParams] = useState<UtmParams>({});
   const [isGaReady, setIsGaReady] = useState(false);
@@ -404,5 +404,43 @@ export default function SummerSalePage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-slate-900 dark:to-slate-800 min-h-screen">
+      <div className="max-w-6xl mx-auto p-6">
+        <div className="mb-8">
+          <Link href="/">
+            <Button variant="ghost" className="mb-4">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to UTM Tracker
+            </Button>
+          </Link>
+          <div className="bg-white dark:bg-slate-900 rounded-lg p-8 shadow-lg border border-blue-200 dark:border-slate-700">
+            <div className="flex items-center gap-3 mb-4">
+              <ShoppingBag className="w-8 h-8 text-blue-600" />
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-50">
+                  Summer Sale - Beachwear Collection
+                </h1>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Loading campaign data...
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function SummerSalePage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <SummerSaleContent />
+    </Suspense>
   );
 }
