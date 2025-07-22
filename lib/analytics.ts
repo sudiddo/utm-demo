@@ -34,7 +34,7 @@ export const waitForGA = (): Promise<boolean> => {
   });
 };
 
-// Send page view event
+// Send page view event - GA4 automatically captures UTM parameters from URL
 export const sendPageView = (url: string, title?: string): void => {
   if (!isGAAvailable()) {
     console.warn("GA: gtag not available for page view");
@@ -72,66 +72,63 @@ export const sendEvent = (
   }
 };
 
-// Send conversion event with UTM parameters
+// Send conversion event - GA4 automatically associates UTM data with events
 export const sendConversion = (
   eventName: string,
-  utmParams: Record<string, string> = {}
+  additionalParams: Record<string, string | number> = {}
 ): void => {
   const eventParams: GtagParams = {
     event_category: "UTM Demo",
     event_label: "Simulated Conversion",
     value: 1,
+    ...additionalParams,
   };
 
-  // Add UTM parameters in GA4 format
-  if (utmParams.utm_source) eventParams.campaign_source = utmParams.utm_source;
-  if (utmParams.utm_medium) eventParams.campaign_medium = utmParams.utm_medium;
-  if (utmParams.utm_campaign)
-    eventParams.campaign_name = utmParams.utm_campaign;
-  if (utmParams.utm_term) eventParams.campaign_term = utmParams.utm_term;
-  if (utmParams.utm_content)
-    eventParams.campaign_content = utmParams.utm_content;
-  if (utmParams.utm_id) eventParams.campaign_id = utmParams.utm_id;
-
-  // Add other tracking parameters
-  if (utmParams.gclid) eventParams.gclid = utmParams.gclid;
-  if (utmParams.fbclid) eventParams.fbclid = utmParams.fbclid;
-  if (utmParams.mc_cid) eventParams.mc_cid = utmParams.mc_cid;
+  // Note: GA4 automatically captures UTM parameters from the URL
+  // No need to manually add campaign parameters - they're already tracked
+  console.log(
+    "GA: Sending conversion event. UTM parameters are automatically tracked by GA4 from the current URL."
+  );
 
   sendEvent(eventName, eventParams);
 };
 
-// Configure GA with campaign parameters for proper attribution
-export const configureWithCampaign = (
-  utmParams: Record<string, string>
-): void => {
-  if (!isGAAvailable()) {
-    console.warn("GA: gtag not available for config");
-    return;
+// Log current UTM parameters from URL for demonstration
+export const logCurrentUTMParams = (): Record<string, string> => {
+  const utmParams: Record<string, string> = {};
+
+  if (typeof window !== "undefined") {
+    const urlParams = new URLSearchParams(window.location.search);
+
+    // Standard UTM parameters
+    const utmKeys = [
+      "utm_source",
+      "utm_medium",
+      "utm_campaign",
+      "utm_term",
+      "utm_content",
+      "utm_id",
+    ];
+
+    utmKeys.forEach((key) => {
+      const value = urlParams.get(key);
+      if (value) {
+        utmParams[key] = value;
+      }
+    });
+
+    if (Object.keys(utmParams).length > 0) {
+      console.log("GA: Current UTM parameters detected:", utmParams);
+      console.log(
+        "GA: These are automatically tracked by GA4 - no manual configuration needed"
+      );
+    }
   }
 
-  if (Object.keys(utmParams).length === 0) return;
-
-  const configParams: GtagParams = {};
-
-  if (utmParams.utm_source) configParams.campaign_source = utmParams.utm_source;
-  if (utmParams.utm_medium) configParams.campaign_medium = utmParams.utm_medium;
-  if (utmParams.utm_campaign)
-    configParams.campaign_name = utmParams.utm_campaign;
-  if (utmParams.utm_term) configParams.campaign_term = utmParams.utm_term;
-  if (utmParams.utm_content)
-    configParams.campaign_content = utmParams.utm_content;
-  if (utmParams.utm_id) configParams.campaign_id = utmParams.utm_id;
-
-  try {
-    window.gtag("config", GA_MEASUREMENT_ID, configParams);
-    console.log("GA: Config updated with campaign params", configParams);
-  } catch (error) {
-    console.error("GA: Error updating config", error);
-  }
+  return utmParams;
 };
 
-// New: Check if @next/third-parties GoogleAnalytics is ready
+// Check if @next/third-parties GoogleAnalytics is ready
 export const isThirdPartyGAReady = (): boolean => {
   return (
     isGAAvailable() &&
@@ -140,4 +137,24 @@ export const isThirdPartyGAReady = (): boolean => {
     document.querySelector('script[src*="googletagmanager.com/gtag/js"]') !==
       null
   );
+};
+
+// Enhanced logging for UTM parameter debugging
+export const debugUTMTracking = (): void => {
+  if (!isGAAvailable()) {
+    console.warn("GA: Google Analytics not available for UTM debugging");
+    return;
+  }
+
+  const currentUTMs = logCurrentUTMParams();
+
+  console.log("=== UTM Debug Info ===");
+  console.log("Current URL:", window.location.href);
+  console.log("Detected UTM parameters:", currentUTMs);
+  console.log("GA4 Status:", isGAAvailable() ? "Ready" : "Not Ready");
+  console.log("Note: GA4 automatically tracks UTM parameters from page URLs");
+  console.log(
+    "Check GA4 Reports > Acquisition > Traffic Acquisition for UTM data"
+  );
+  console.log("====================");
 };

@@ -28,12 +28,14 @@ import {
   TestTube2,
   CheckCircle,
   AlertCircle,
+  Bug,
 } from "lucide-react";
 import {
   waitForGA,
   sendPageView,
   sendConversion,
-  configureWithCampaign,
+  logCurrentUTMParams,
+  debugUTMTracking,
   isGAAvailable,
 } from "@/lib/analytics";
 
@@ -133,6 +135,8 @@ export default function UtmTracker() {
 
       if (gaReady) {
         console.log("GA: @next/third-parties Google Analytics is ready");
+        // Log current UTM parameters for debugging
+        logCurrentUTMParams();
       } else {
         console.warn("GA: Google Analytics failed to load");
       }
@@ -151,17 +155,17 @@ export default function UtmTracker() {
       return;
     }
 
-    const params = parseTrackingParams(currentUrl);
-
-    // Send page view
+    // Send page view - GA4 automatically captures UTM parameters from URL
     sendPageView(currentUrl, `UTM Demo - ${currentUrl}`);
-
-    // Configure GA with campaign parameters for proper attribution
-    if (Object.keys(params).length > 0) {
-      configureWithCampaign(params);
-    }
-
     setLastEventSent("page_view");
+
+    // Log UTM parameters for demonstration
+    const detectedUTMs = logCurrentUTMParams();
+    if (Object.keys(detectedUTMs).length > 0) {
+      console.log(
+        "GA: UTM parameters will be automatically associated with this page view by GA4"
+      );
+    }
   }, [currentUrl, isGtagReady]);
 
   const handleSimulate = () => {
@@ -177,10 +181,22 @@ export default function UtmTracker() {
       return;
     }
 
-    sendConversion("utm_demo_conversion", analyzedParams);
+    // Send conversion event - GA4 automatically associates current UTM parameters
+    sendConversion("utm_demo_conversion", {
+      demo_type: "manual_test",
+      current_url: currentUrl,
+    });
+
     setLastEventSent("utm_demo_conversion");
     alert(
-      "Custom event 'utm_demo_conversion' sent to GA! Check the console and your GA Realtime reports."
+      "Custom event 'utm_demo_conversion' sent to GA4! UTM parameters from the current URL are automatically tracked. Check the console and your GA4 Realtime reports."
+    );
+  };
+
+  const handleDebugUTM = () => {
+    debugUTMTracking();
+    alert(
+      "UTM debug info logged to console. Check your browser's developer tools console for detailed information."
     );
   };
 
@@ -201,7 +217,7 @@ export default function UtmTracker() {
       case "ready":
         return {
           icon: <CheckCircle className="w-4 h-4 text-green-500" />,
-          text: "@next/third-parties GA ready",
+          text: "@next/third-parties GA4 ready",
           color: "text-green-600 dark:text-green-400",
         };
       case "failed":
@@ -220,11 +236,11 @@ export default function UtmTracker() {
       <div className="max-w-7xl mx-auto">
         <header className="text-center mb-8">
           <h1 className="text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50">
-            UTM & Ad Parameter Simulator
+            UTM & Ad Parameter Tracker
           </h1>
           <p className="mt-2 text-lg text-slate-600 dark:text-slate-400 max-w-3xl mx-auto">
-            See how marketing parameters are extracted from a URL and sent to
-            analytics. Paste a URL or use an example to get started.
+            See how GA4 automatically tracks marketing parameters from URLs.
+            Paste a URL or use an example to get started.
           </p>
 
           {/* GA Status Indicator */}
@@ -317,6 +333,10 @@ export default function UtmTracker() {
                   <ListTree className="w-6 h-6" />
                   <span>Detected Parameters</span>
                 </CardTitle>
+                <CardDescription>
+                  These parameters are automatically tracked by GA4 when the URL
+                  loads
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 {Object.keys(analyzedParams).length > 0 ? (
@@ -350,32 +370,50 @@ export default function UtmTracker() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Send className="w-6 h-6" />
-                  <span>Google Analytics Events</span>
+                  <span>GA4 Event Testing</span>
                 </CardTitle>
                 <CardDescription>
-                  This simulates events sent to GA via @next/third-parties.
-                  Check your GA Realtime dashboard to see them appear.
+                  GA4 automatically associates UTM parameters from the current
+                  URL with all events. Check GA4 Reports → Acquisition → Traffic
+                  Acquisition.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center gap-4">
-                <Button
-                  onClick={handleSendCustomEvent}
-                  size="lg"
-                  className="w-full"
-                  disabled={gaStatus !== "ready"}
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Send Conversion Event
-                  {gaStatus === "ready" && (
-                    <CheckCircle className="w-4 h-4 ml-2 text-green-400" />
-                  )}
-                </Button>
+                <div className="flex gap-2 w-full">
+                  <Button
+                    onClick={handleSendCustomEvent}
+                    size="lg"
+                    className="flex-1"
+                    disabled={gaStatus !== "ready"}
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    Send Test Event
+                    {gaStatus === "ready" && (
+                      <CheckCircle className="w-4 h-4 ml-2 text-green-400" />
+                    )}
+                  </Button>
+                  <Button
+                    onClick={handleDebugUTM}
+                    size="lg"
+                    variant="outline"
+                    disabled={gaStatus !== "ready"}
+                  >
+                    <Bug className="w-4 h-4" />
+                  </Button>
+                </div>
                 {lastEventSent && (
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Last event sent to GA:
+                    Last event sent to GA4:
                     <span className="font-semibold ml-1">{lastEventSent}</span>
                   </p>
                 )}
+                <div className="text-xs text-slate-500 dark:text-slate-400 text-center">
+                  💡 Pro tip: UTM data appears in GA4 Reports → Acquisition →
+                  Traffic Acquisition.
+                  <br />
+                  Look for &ldquo;Source/Medium&rdquo; and
+                  &ldquo;Campaign&rdquo; dimensions.
+                </div>
               </CardContent>
             </Card>
           </div>
