@@ -58,15 +58,15 @@ const TRACKING_KEYS = [
 const EXAMPLE_URLS = [
   {
     name: "Google Ads",
-    url: "https://yourshop.com/products/summer-sale?utm_source=google&utm_medium=cpc&utm_campaign=summer_launch&utm_term=beachwear&gclid=Cj0KCQjwgNanBhDUARIsAkhg3di9nS9tC9W4ZzY0",
+    url: "https://utm-demo.vercel.app/products/summer-sale?utm_source=google&utm_medium=cpc&utm_campaign=summer_launch&utm_term=beachwear&gclid=Cj0KCQjwgNanBhDUARIsAkhg3di9nS9tC9W4ZzY0",
   },
   {
     name: "Facebook Campaign",
-    url: "https://yourshop.com/landing/early-access?utm_source=facebook&utm_medium=social_paid&utm_campaign=q3_lookbook&fbclid=IwAR2-gT8DqXkP6A-...",
+    url: "https://utm-demo.vercel.app/landing/early-access?utm_source=facebook&utm_medium=social_paid&utm_campaign=q3_lookbook&fbclid=IwAR2-gT8DqXkP6A",
   },
   {
     name: "Email Newsletter",
-    url: "https://yourshop.com/?utm_source=newsletter&utm_medium=email&utm_campaign=weekly_deals_august&mc_cid=a1b2c3d4e5",
+    url: "https://utm-demo.vercel.app/?utm_source=newsletter&utm_medium=email&utm_campaign=weekly_deals_august&mc_cid=a1b2c3d4e5",
   },
 ];
 
@@ -119,12 +119,22 @@ export default function UtmTracker() {
 
     try {
       const urlObj = new URL(currentUrl);
+      const params = parseTrackingParams(currentUrl);
+
+      // Send page_view with UTM parameters
       window.gtag("event", "page_view", {
         page_path: urlObj.pathname + urlObj.search,
         page_location: currentUrl,
         page_title: `UTM Demo - ${currentUrl}`,
+        // Add UTM parameters as custom dimensions
+        campaign_source: params.utm_source,
+        campaign_medium: params.utm_medium,
+        campaign_name: params.utm_campaign,
+        campaign_term: params.utm_term,
+        campaign_content: params.utm_content,
+        campaign_id: params.utm_id,
       });
-      console.log(`GA: Sent page_view for: ${currentUrl}`);
+      console.log(`GA: Sent page_view for: ${currentUrl}`, params);
       setLastEventSent("page_view");
     } catch (error: unknown) {
       console.error("GA Error: Failed to send page_view.", error);
@@ -145,16 +155,35 @@ export default function UtmTracker() {
     }
 
     const eventName = "utm_demo_conversion";
-    const eventParams = {
+
+    // Format UTM parameters for GA4
+    const eventParams: Record<string, string | undefined> = {
       event_category: "UTM Demo",
       event_label: "Simulated Conversion",
-      ...analyzedParams,
+      // Standard GA4 campaign parameters
+      campaign_source: analyzedParams.utm_source,
+      campaign_medium: analyzedParams.utm_medium,
+      campaign_name: analyzedParams.utm_campaign,
+      campaign_term: analyzedParams.utm_term,
+      campaign_content: analyzedParams.utm_content,
+      campaign_id: analyzedParams.utm_id,
+      // Additional tracking parameters as custom parameters
+      gclid: analyzedParams.gclid,
+      fbclid: analyzedParams.fbclid,
+      mc_cid: analyzedParams.mc_cid,
     };
+
+    // Remove undefined values
+    Object.keys(eventParams).forEach((key) => {
+      if (eventParams[key] === undefined) {
+        delete eventParams[key];
+      }
+    });
 
     window.gtag("event", eventName, eventParams);
     console.log(
       `GA: Sent custom event '${eventName}' with params:`,
-      analyzedParams
+      eventParams
     );
     setLastEventSent(eventName);
     alert(
