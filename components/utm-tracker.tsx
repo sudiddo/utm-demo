@@ -160,20 +160,49 @@ export default function UtmTracker() {
 
       console.log("GA: Sending page_view event", { currentUrl, params });
 
-      // Send page_view with UTM parameters
-      window.gtag("event", "page_view", {
-        page_path: urlObj.pathname + urlObj.search,
+      // Send page_view with proper GA4 format
+      const pageViewParams: Record<string, string> = {
+        page_title: `UTM Demo - ${urlObj.pathname}`,
         page_location: currentUrl,
-        page_title: `UTM Demo - ${currentUrl}`,
-        // Add UTM parameters as custom dimensions
-        campaign_source: params.utm_source,
-        campaign_medium: params.utm_medium,
-        campaign_name: params.utm_campaign,
-        campaign_term: params.utm_term,
-        campaign_content: params.utm_content,
-        campaign_id: params.utm_id,
-      });
-      console.log(`GA: Successfully sent page_view for: ${currentUrl}`, params);
+      };
+
+      // Add UTM parameters if they exist
+      if (params.utm_source) pageViewParams.campaign_source = params.utm_source;
+      if (params.utm_medium) pageViewParams.campaign_medium = params.utm_medium;
+      if (params.utm_campaign)
+        pageViewParams.campaign_name = params.utm_campaign;
+      if (params.utm_term) pageViewParams.campaign_term = params.utm_term;
+      if (params.utm_content)
+        pageViewParams.campaign_content = params.utm_content;
+      if (params.utm_id) pageViewParams.campaign_id = params.utm_id;
+
+      // Add other tracking IDs as custom parameters
+      if (params.gclid) pageViewParams.gclid = params.gclid;
+      if (params.fbclid) pageViewParams.fbclid = params.fbclid;
+      if (params.mc_cid) pageViewParams.mc_cid = params.mc_cid;
+
+      window.gtag("event", "page_view", pageViewParams);
+
+      // Also send a config update with campaign info for proper attribution
+      if (Object.keys(params).length > 0) {
+        window.gtag(
+          "config",
+          process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "G-XXXXXXXXXX",
+          {
+            campaign_source: params.utm_source,
+            campaign_medium: params.utm_medium,
+            campaign_name: params.utm_campaign,
+            campaign_term: params.utm_term,
+            campaign_content: params.utm_content,
+            campaign_id: params.utm_id,
+          }
+        );
+      }
+
+      console.log(
+        `GA: Successfully sent page_view for: ${currentUrl}`,
+        pageViewParams
+      );
       setLastEventSent("page_view");
     } catch (error: unknown) {
       console.error("GA Error: Failed to send page_view.", error);

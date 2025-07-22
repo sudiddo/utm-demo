@@ -38,7 +38,8 @@ export default function RootLayout({
           function gtag(){dataLayer.push(arguments);}
           gtag('js', new Date());
           gtag('config', '${process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID}', {
-            page_path: window.location.pathname + window.location.search,
+            debug_mode: true,
+            send_page_view: false
           });
         `}
         </Script>
