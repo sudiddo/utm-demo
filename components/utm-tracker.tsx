@@ -108,18 +108,57 @@ export default function UtmTracker() {
     setCurrentUrl(initialUrl);
     setAnalyzedParams(parseTrackingParams(initialUrl));
 
-    if (typeof window.gtag === "function") {
-      setIsGtagAvailable(true);
+    // Check for gtag availability with a more robust approach
+    const checkGtag = () => {
+      if (typeof window !== "undefined" && typeof window.gtag === "function") {
+        console.log("GA: gtag detected and available");
+        setIsGtagAvailable(true);
+        return true;
+      }
+      return false;
+    };
+
+    // Check immediately
+    if (!checkGtag()) {
+      // If not available, check periodically for a few seconds
+      console.log(
+        "GA: gtag not immediately available, checking periodically..."
+      );
+      let attempts = 0;
+      const maxAttempts = 20; // 4 seconds total
+
+      const interval = setInterval(() => {
+        attempts++;
+        if (checkGtag() || attempts >= maxAttempts) {
+          clearInterval(interval);
+          if (attempts >= maxAttempts) {
+            console.log("GA: gtag not detected after waiting");
+          }
+        }
+      }, 200); // Check every 200ms
     }
   }, []);
 
   // Send a page_view event whenever the analyzed URL changes
   useEffect(() => {
-    if (!currentUrl || !isGtagAvailable) return;
+    console.log("GA: page_view effect triggered", {
+      currentUrl,
+      isGtagAvailable,
+    });
+
+    if (!currentUrl || !isGtagAvailable) {
+      console.log("GA: Skipping page_view - missing requirements", {
+        currentUrl: !!currentUrl,
+        isGtagAvailable,
+      });
+      return;
+    }
 
     try {
       const urlObj = new URL(currentUrl);
       const params = parseTrackingParams(currentUrl);
+
+      console.log("GA: Sending page_view event", { currentUrl, params });
 
       // Send page_view with UTM parameters
       window.gtag("event", "page_view", {
@@ -134,7 +173,7 @@ export default function UtmTracker() {
         campaign_content: params.utm_content,
         campaign_id: params.utm_id,
       });
-      console.log(`GA: Sent page_view for: ${currentUrl}`, params);
+      console.log(`GA: Successfully sent page_view for: ${currentUrl}`, params);
       setLastEventSent("page_view");
     } catch (error: unknown) {
       console.error("GA Error: Failed to send page_view.", error);
