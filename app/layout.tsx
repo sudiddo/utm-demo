@@ -39,7 +39,6 @@ export default function RootLayout({
           gtag('js', new Date());
           gtag('config', 'G-R64CF5TY9M', {
             debug_mode: true,
-            send_page_view: false
           });
         `}
         </Script>
